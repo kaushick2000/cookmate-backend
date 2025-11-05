@@ -1,8 +1,11 @@
 package com.cookmate.backend.controller;
 
 import com.cookmate.backend.dto.*;
+import com.cookmate.backend.entity.User;
 import com.cookmate.backend.service.AuthService;
-import com.cookmate.backend.dto.AuthRequest; 
+import com.cookmate.backend.dto.AuthRequest;
+import com.cookmate.backend.security.service.UserDetailsImpl;
+import org.springframework.security.core.annotation.AuthenticationPrincipal; 
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -49,7 +52,20 @@ public class AuthController {
     
     @PostMapping("/reset-password")
     public ResponseEntity<ApiResponse> resetPassword(@Valid @RequestBody PasswordResetConfirm request) {
-        ApiResponse response = authService.resetPassword(request);
+        ApiResponse response = authService.resetPasswordWithToken(request.getToken(), request.getNewPassword());
         return ResponseEntity.ok(response);
+    }
+
+    @GetMapping("/me")
+    public ResponseEntity<User> getCurrentUser(@AuthenticationPrincipal UserDetailsImpl userDetails) {
+        User user = authService.getCurrentUser(userDetails.getUsername());
+        return ResponseEntity.ok(user);
+    }
+
+    @PutMapping("/profile")
+    public ResponseEntity<User> updateProfile(@Valid @RequestBody UpdateProfileRequest request, 
+                                            @AuthenticationPrincipal UserDetailsImpl userDetails) {
+        User updatedUser = authService.updateProfile(userDetails.getUsername(), request);
+        return ResponseEntity.ok(updatedUser);
     }
 }

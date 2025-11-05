@@ -2,7 +2,6 @@ package com.cookmate.backend.service;
 
 import com.cookmate.backend.dto.*;
 import com.cookmate.backend.entity.*;
-import com.cookmate.backend.exception.BadRequestException;
 import com.cookmate.backend.exception.ResourceNotFoundException;
 import com.cookmate.backend.exception.UnauthorizedException;
 import com.cookmate.backend.repository.*;
@@ -16,9 +15,6 @@ import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.math.BigDecimal;
-import java.math.RoundingMode;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 

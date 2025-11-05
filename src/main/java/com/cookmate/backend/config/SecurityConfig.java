@@ -3,10 +3,14 @@ package com.cookmate.backend.config;
 import com.cookmate.backend.security.jwt.AuthEntryPointJwt;
 import com.cookmate.backend.security.jwt.AuthTokenFilter;
 import com.cookmate.backend.security.service.UserDetailsServiceImpl;
+import com.cookmate.backend.security.oauth2.OAuth2AuthenticationSuccessHandler;
+import com.cookmate.backend.security.oauth2.OAuth2AuthenticationFailureHandler;
+import com.cookmate.backend.security.oauth2.OAuth2UserService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
@@ -35,8 +39,20 @@ public class SecurityConfig {
     @Autowired
     private AuthEntryPointJwt unauthorizedHandler;
     
+    @Autowired
+    private OAuth2UserService oAuth2UserService;
+    
+    @Autowired
+    private OAuth2AuthenticationSuccessHandler oAuth2AuthenticationSuccessHandler;
+    
+    @Autowired
+    private OAuth2AuthenticationFailureHandler oAuth2AuthenticationFailureHandler;
+    
     @Value("${cors.allowed.origins}")
     private String allowedOrigins;
+    
+    @Value("${spring.security.oauth2.client.registration.google.client-id:}")
+    private String googleClientId;
     
     @Bean
     public AuthTokenFilter authenticationJwtTokenFilter() {
@@ -73,8 +89,21 @@ public class SecurityConfig {
                         .requestMatchers("/api/recipes/public/**").permitAll()
                         .requestMatchers("/api/recipes/search/**").permitAll()
                         .requestMatchers("/api/admin/**").hasRole("ADMIN")
+                        .requestMatchers("/oauth2/**").permitAll()
                         .anyRequest().authenticated()
                 );
+        
+        // Only configure OAuth2 if credentials are properly set
+        if (googleClientId != null && !googleClientId.isEmpty() && 
+            !googleClientId.equals("REPLACE_WITH_YOUR_GOOGLE_CLIENT_ID")) {
+            http.oauth2Login(oauth2 -> oauth2
+                    .userInfoEndpoint(userInfo -> userInfo
+                            .userService(oAuth2UserService)
+                    )
+                    .successHandler(oAuth2AuthenticationSuccessHandler)
+                    .failureHandler(oAuth2AuthenticationFailureHandler)
+            );
+        }
         
         http.authenticationProvider(authenticationProvider());
         http.addFilterBefore(authenticationJwtTokenFilter(), UsernamePasswordAuthenticationFilter.class);

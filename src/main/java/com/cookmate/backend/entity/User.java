@@ -1,6 +1,7 @@
 package com.cookmate.backend.entity;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
@@ -10,7 +11,9 @@ import org.hibernate.annotations.UpdateTimestamp;
 
 import java.time.LocalDateTime;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 @Entity
 @Table(name = "users")
@@ -85,6 +88,12 @@ public class User {
     @JsonIgnore
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
     private Set<ShoppingList> shoppingLists = new HashSet<>();
+    
+    @OneToOne(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.EAGER)
+    private UserPreferences preferences;
+
+    @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.EAGER)
+    private Set<UserDietaryRestriction> dietaryRestrictions = new HashSet<>();
 
     // Constructors
     public User() {}
@@ -240,6 +249,33 @@ public class User {
 
     public void setShoppingLists(Set<ShoppingList> shoppingLists) {
         this.shoppingLists = shoppingLists;
+    }
+
+    public UserPreferences getPreferences() {
+        return preferences;
+    }
+
+    public void setPreferences(UserPreferences preferences) {
+        this.preferences = preferences;
+    }
+
+    public Set<UserDietaryRestriction> getDietaryRestrictions() {
+        return dietaryRestrictions;
+    }
+
+    public void setDietaryRestrictions(Set<UserDietaryRestriction> dietaryRestrictions) {
+        this.dietaryRestrictions = dietaryRestrictions;
+    }
+    
+    // Custom JSON property to return dietary restriction names as a list
+    @JsonProperty("dietaryRestrictionNames")
+    public List<String> getDietaryRestrictionNames() {
+        if (dietaryRestrictions == null) {
+            return List.of();
+        }
+        return dietaryRestrictions.stream()
+                .map(udr -> udr.getDietaryRestriction().getName())
+                .collect(Collectors.toList());
     }
     
     public enum Role {

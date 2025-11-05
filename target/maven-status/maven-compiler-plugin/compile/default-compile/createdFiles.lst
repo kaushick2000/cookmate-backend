@@ -25,6 +25,7 @@ com/cookmate/backend/service/GoogleGeminiService$GeminiResponse.class
 com/cookmate/backend/dto/RecipeIngredientDto.class
 com/cookmate/backend/repository/RecipeIngredientRepository.class
 com/cookmate/backend/controller/RecentlyViewedController.class
+com/cookmate/backend/entity/UserPreferences$1.class
 com/cookmate/backend/entity/MealType.class
 com/cookmate/backend/dto/InstructionDto.class
 com/cookmate/backend/service/GoogleGeminiService$GeminiResponse$Candidate$Content.class
@@ -81,6 +82,8 @@ com/cookmate/backend/entity/UserPreferences$CookingSkillLevel.class
 com/cookmate/backend/dto/MealPlanRecipeDto.class
 com/cookmate/backend/service/FavoriteService.class
 com/cookmate/backend/config/OAuth2Config.class
+com/cookmate/backend/entity/IngredientSubstitution.class
+com/cookmate/backend/entity/Recommendation.class
 com/cookmate/backend/repository/PasswordResetTokenRepository.class
 com/cookmate/backend/entity/RecentlyViewed.class
 com/cookmate/backend/security/jwt/AuthTokenFilter.class

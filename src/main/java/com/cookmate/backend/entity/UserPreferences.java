@@ -1,5 +1,7 @@
 package com.cookmate.backend.entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.persistence.*;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
@@ -14,6 +16,7 @@ public class UserPreferences {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
     
+    @JsonIgnore
     @OneToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", nullable = false, unique = true)
     private User user;
@@ -201,5 +204,24 @@ public class UserPreferences {
     
     public void setUpdatedAt(LocalDateTime updatedAt) {
         this.updatedAt = updatedAt;
+    }
+    
+    // Custom JSON property to return difficulty level compatible with frontend
+    @JsonProperty("difficultyLevel")
+    public String getDifficultyLevel() {
+        if (cookingSkillLevel == null) {
+            return "medium"; // default
+        }
+        switch (cookingSkillLevel) {
+            case BEGINNER:
+                return "easy";
+            case INTERMEDIATE:
+                return "medium";
+            case ADVANCED:
+            case EXPERT:
+                return "hard";
+            default:
+                return "medium";
+        }
     }
 }

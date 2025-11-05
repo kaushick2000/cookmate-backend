@@ -1,11 +1,15 @@
 package com.cookmate.backend.service;
 
 import com.cookmate.backend.dto.*;
+import com.cookmate.backend.entity.DietaryRestriction;
 import com.cookmate.backend.entity.PasswordResetToken;
 import com.cookmate.backend.entity.User;
+import com.cookmate.backend.entity.UserDietaryRestriction;
 import com.cookmate.backend.entity.UserPreferences;
 import com.cookmate.backend.exception.BadRequestException;
+import com.cookmate.backend.repository.DietaryRestrictionRepository;
 import com.cookmate.backend.repository.PasswordResetTokenRepository;
+import com.cookmate.backend.repository.UserDietaryRestrictionRepository;
 import com.cookmate.backend.repository.UserRepository;
 import com.cookmate.backend.repository.UserPreferencesRepository;
 import com.cookmate.backend.security.jwt.JwtUtils;
@@ -36,6 +40,12 @@ public class AuthService {
     
     @Autowired
     private UserPreferencesRepository userPreferencesRepository;
+    
+    @Autowired
+    private DietaryRestrictionRepository dietaryRestrictionRepository;
+    
+    @Autowired
+    private UserDietaryRestrictionRepository userDietaryRestrictionRepository;
     
     @Autowired
     private PasswordEncoder passwordEncoder;
@@ -102,7 +112,7 @@ public class AuthService {
      * Register a new user
      */
     @Transactional
-    public ApiResponse register(RegisterRequest request) {
+    public AuthResponse register(RegisterRequest request) {
         // Check if username already exists
         if (userRepository.existsByUsername(request.getUsername())) {
             throw new BadRequestException("Username is already taken");
@@ -128,7 +138,37 @@ public class AuthService {
         // Save user to database
         userRepository.save(user);
         
-        return new ApiResponse(true, "User registered successfully");
+        // Authenticate the newly registered user
+        Authentication authentication = authenticationManager.authenticate(
+                new UsernamePasswordAuthenticationToken(
+                        request.getUsername(),
+                        request.getPassword()
+                )
+        );
+        
+        // Set authentication in security context
+        SecurityContextHolder.getContext().setAuthentication(authentication);
+        
+        // Generate JWT token
+        String jwt = jwtUtils.generateJwtToken(authentication);
+        
+        // Get user details
+        UserDetailsImpl userDetails = (UserDetailsImpl) authentication.getPrincipal();
+        
+        // Extract role (remove ROLE_ prefix)
+        String role = userDetails.getAuthorities().stream()
+                .findFirst()
+                .map(item -> item.getAuthority().replace("ROLE_", ""))
+                .orElse("USER");
+        
+        // Return authentication response with token
+        return new AuthResponse(
+                jwt,
+                userDetails.getId(),
+                userDetails.getUsername(),
+                userDetails.getEmail(),
+                role
+        );
     }
     
         /**
@@ -295,14 +335,26 @@ public class AuthService {
                 preferences.setFoodAllergies(reqPrefs.getFoodAllergies());
             }
             
-            // Store dietary restrictions as comma-separated string in food_allergies for now
-            if (reqPrefs.getDietaryRestrictions() != null && !reqPrefs.getDietaryRestrictions().isEmpty()) {
-                String dietary = String.join(", ", reqPrefs.getDietaryRestrictions());
-                String currentAllergies = preferences.getFoodAllergies();
-                if (currentAllergies != null && !currentAllergies.isEmpty()) {
-                    preferences.setFoodAllergies(currentAllergies + "; Dietary: " + dietary);
-                } else {
-                    preferences.setFoodAllergies("Dietary: " + dietary);
+            // Handle dietary restrictions properly
+            if (reqPrefs.getDietaryRestrictions() != null) {
+                // First, remove existing dietary restrictions for this user
+                userDietaryRestrictionRepository.deleteByUser(user);
+                
+                // Add new dietary restrictions
+                for (String restrictionName : reqPrefs.getDietaryRestrictions()) {
+                    // Find or create the dietary restriction
+                    DietaryRestriction restriction = dietaryRestrictionRepository
+                            .findByNameIgnoreCase(restrictionName)
+                            .orElseGet(() -> {
+                                DietaryRestriction newRestriction = new DietaryRestriction();
+                                newRestriction.setName(restrictionName);
+                                newRestriction.setIsActive(true);
+                                return dietaryRestrictionRepository.save(newRestriction);
+                            });
+                    
+                    // Create user dietary restriction
+                    UserDietaryRestriction userRestriction = new UserDietaryRestriction(user, restriction);
+                    userDietaryRestrictionRepository.save(userRestriction);
                 }
             }
             

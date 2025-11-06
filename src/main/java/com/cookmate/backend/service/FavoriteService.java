@@ -81,7 +81,7 @@ public class FavoriteService {
         Page<Favorite> favoritePage = favoriteRepository.findByUser_Id(userDetails.getId(), pageable);
         
         List<RecipeDto> content = favoritePage.getContent().stream()
-                .map(favorite -> recipeService.convertToDto(favorite.getRecipe()))
+                .map(favorite -> recipeService.convertToSimpleDto(favorite.getRecipe()))
                 .collect(Collectors.toList());
         
         return new PageResponse<>(

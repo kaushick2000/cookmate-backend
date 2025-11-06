@@ -276,7 +276,7 @@ public class RecipeService {
     }
     
     // Convert to DTO for list views (without ingredients and instructions)
-    private RecipeDto convertToSimpleDto(Recipe recipe) {
+    public RecipeDto convertToSimpleDto(Recipe recipe) {
         RecipeDto dto = new RecipeDto();
         dto.setId(recipe.getId());
         dto.setTitle(recipe.getTitle());

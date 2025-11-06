@@ -15,6 +15,8 @@ com/cookmate/backend/entity/MealPlan.class
 com/cookmate/backend/entity/UserPreferences.class
 com/cookmate/backend/dto/ShoppingListItemRequest.class
 com/cookmate/backend/security/oauth2/GoogleOAuth2UserInfo.class
+com/cookmate/backend/repository/DietaryRestrictionRepository.class
+com/cookmate/backend/repository/UserDietaryRestrictionRepository.class
 com/cookmate/backend/dto/ReviewRequest.class
 com/cookmate/backend/dto/ShoppingListRequest.class
 com/cookmate/backend/service/GoogleGeminiService$GeminiResponse$Candidate.class

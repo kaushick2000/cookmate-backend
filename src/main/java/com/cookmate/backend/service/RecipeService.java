@@ -126,7 +126,7 @@ public class RecipeService {
     
     @Transactional
     public RecipeDto getRecipeById(Long id, Authentication authentication) {
-        Recipe recipe = recipeRepository.findById(id)
+        Recipe recipe = recipeRepository.findByIdWithDetails(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Recipe", "id", id));
         
         // Increment view count
@@ -157,7 +157,7 @@ public class RecipeService {
                    Sort.by(sortBy).ascending() : Sort.by(sortBy).descending();
         Pageable pageable = PageRequest.of(page, size, sort);
         
-        Page<Recipe> recipePage = recipeRepository.findAll(pageable);
+        Page<Recipe> recipePage = recipeRepository.findAllWithDetails(pageable);
         return convertToPageResponse(recipePage);
     }
     
@@ -275,6 +275,45 @@ public class RecipeService {
         }
     }
     
+    // Convert to DTO for list views (without ingredients and instructions)
+    private RecipeDto convertToSimpleDto(Recipe recipe) {
+        RecipeDto dto = new RecipeDto();
+        dto.setId(recipe.getId());
+        dto.setTitle(recipe.getTitle());
+        dto.setDescription(recipe.getDescription());
+        dto.setCuisineType(recipe.getCuisineType());
+        dto.setMealType(recipe.getMealType());
+        dto.setDifficultyLevel(recipe.getDifficultyLevel());
+        dto.setPrepTime(recipe.getPrepTime());
+        dto.setCookTime(recipe.getCookTime());
+        dto.setTotalTime(recipe.getTotalTime());
+        dto.setServings(recipe.getServings());
+        dto.setCalories(recipe.getCalories());
+        dto.setProtein(recipe.getProtein());
+        dto.setCarbs(recipe.getCarbs());
+        dto.setFat(recipe.getFat());
+        dto.setFiber(recipe.getFiber());
+        dto.setImageUrl(recipe.getImageUrl());
+        dto.setVideoUrl(recipe.getVideoUrl());
+        dto.setIsVegetarian(recipe.getIsVegetarian());
+        dto.setIsVegan(recipe.getIsVegan());
+        dto.setIsGlutenFree(recipe.getIsGlutenFree());
+        dto.setIsDairyFree(recipe.getIsDairyFree());
+        dto.setAverageRating(recipe.getAverageRating());
+        dto.setTotalReviews(recipe.getTotalReviews());
+        dto.setViewCount(recipe.getViewCount());
+        dto.setCreatedAt(recipe.getCreatedAt());
+        
+        if (recipe.getCreatedBy() != null) {
+            dto.setCreatedById(recipe.getCreatedBy().getId());
+            dto.setCreatedByUsername(recipe.getCreatedBy().getUsername());
+        }
+        
+        return dto;
+    }
+    
+    // Convert to DTO with full details (including ingredients and instructions)
+    @Transactional(readOnly = true)
     public RecipeDto convertToDto(Recipe recipe) {
         RecipeDto dto = new RecipeDto();
         dto.setId(recipe.getId());
@@ -308,17 +347,22 @@ public class RecipeService {
             dto.setCreatedByUsername(recipe.getCreatedBy().getUsername());
         }
         
-        // Convert ingredients
-        List<RecipeIngredientDto> ingredientDtos = recipe.getRecipeIngredients().stream()
-                .map(this::convertToIngredientDto)
-                .collect(Collectors.toList());
-        dto.setIngredients(ingredientDtos);
-        
-        // Convert instructions
-        List<InstructionDto> instructionDtos = recipe.getInstructions().stream()
-                .map(this::convertToInstructionDto)
-                .collect(Collectors.toList());
-        dto.setInstructions(instructionDtos);
+        // Only load ingredients and instructions if they're initialized
+        try {
+            List<RecipeIngredientDto> ingredientDtos = recipe.getRecipeIngredients().stream()
+                    .map(this::convertToIngredientDto)
+                    .collect(Collectors.toList());
+            dto.setIngredients(ingredientDtos);
+            
+            List<InstructionDto> instructionDtos = recipe.getInstructions().stream()
+                    .map(this::convertToInstructionDto)
+                    .collect(Collectors.toList());
+            dto.setInstructions(instructionDtos);
+        } catch (Exception e) {
+            // Collections not initialized, skip them
+            dto.setIngredients(List.of());
+            dto.setInstructions(List.of());
+        }
         
         return dto;
     }
@@ -346,7 +390,7 @@ public class RecipeService {
     
     private PageResponse<RecipeDto> convertToPageResponse(Page<Recipe> recipePage) {
         List<RecipeDto> content = recipePage.getContent().stream()
-                .map(this::convertToDto)
+                .map(this::convertToSimpleDto)
                 .collect(Collectors.toList());
         
         return new PageResponse<>(

@@ -73,6 +73,16 @@ public class Recipe {
     @Column(name = "image_url", length = 500)
     private String imageUrl;
     
+    @Lob
+    @Column(name = "image_data", columnDefinition = "MEDIUMBLOB")
+    private byte[] imageData;
+    
+    @Column(name = "image_filename")
+    private String imageFilename;
+    
+    @Column(name = "image_content_type")
+    private String imageContentType;
+    
     @Column(name = "video_url", length = 500)
     private String videoUrl;
     

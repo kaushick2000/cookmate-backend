@@ -38,6 +38,9 @@ public class RecipeService {
     
     @Autowired
     private RecentlyViewedRepository recentlyViewedRepository;
+
+    @Autowired
+    private FileStorageService fileStorageService;
     
     @Transactional
     public RecipeDto createRecipe(RecipeRequest request, Authentication authentication) {
@@ -83,7 +86,22 @@ public class RecipeService {
             throw new UnauthorizedException("You don't have permission to update this recipe");
         }
         
+        // Store old image URL for cleanup if needed
+        String oldImageUrl = recipe.getImageUrl();
+        
         mapRequestToRecipe(request, recipe);
+        
+        // If the image was changed, clean up old image
+        if (request.getImageData() != null && oldImageUrl != null && oldImageUrl.startsWith("/uploads/")) {
+            try {
+                // Extract filename from old URL
+                String oldFilename = oldImageUrl.substring(oldImageUrl.lastIndexOf('/') + 1);
+                fileStorageService.deleteFile(oldFilename);
+            } catch (Exception e) {
+                // Log error but continue with update
+                System.err.println("Failed to delete old image: " + e.getMessage());
+            }
+        }
         
         // Calculate total time
         Integer totalTime = (request.getPrepTime() != null ? request.getPrepTime() : 0) +
@@ -111,20 +129,31 @@ public class RecipeService {
     public void deleteRecipe(Long id, Authentication authentication) {
         Recipe recipe = recipeRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Recipe", "id", id));
-        
+
         UserDetailsImpl userDetails = (UserDetailsImpl) authentication.getPrincipal();
-        
+
         // Check if user is the creator or admin
         if (!recipe.getCreatedBy().getId().equals(userDetails.getId()) &&
             !userDetails.getAuthorities().stream()
                 .anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN"))) {
             throw new UnauthorizedException("You don't have permission to delete this recipe");
         }
-        
+
+        // Clean up recipe image if it exists
+        String imageUrl = recipe.getImageUrl();
+        if (imageUrl != null && imageUrl.startsWith("/uploads/")) {
+            try {
+                // Extract filename from URL
+                String filename = imageUrl.substring(imageUrl.lastIndexOf('/') + 1);
+                fileStorageService.deleteFile(filename);
+            } catch (Exception e) {
+                // Log error but continue with deletion
+                System.err.println("Failed to delete recipe image: " + e.getMessage());
+            }
+        }
+
         recipeRepository.delete(recipe);
-    }
-    
-    @Transactional
+    }    @Transactional
     public RecipeDto getRecipeById(Long id, Authentication authentication) {
         Recipe recipe = recipeRepository.findByIdWithDetails(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Recipe", "id", id));
@@ -237,6 +266,24 @@ public class RecipeService {
         recipe.setIsVegan(request.getIsVegan());
         recipe.setIsGlutenFree(request.getIsGlutenFree());
         recipe.setIsDairyFree(request.getIsDairyFree());
+        
+        // Handle image data if provided
+        if (request.getImageData() != null) {
+            try {
+                String filename = fileStorageService.storeFile(
+                    request.getImageData(), 
+                    request.getImageFilename(),
+                    request.getImageContentType()
+                );
+                recipe.setImageUrl("/uploads/" + filename);
+                // Clear old blob data since we're using file storage
+                recipe.setImageData(null);
+                recipe.setImageFilename(null);
+                recipe.setImageContentType(null);
+            } catch (Exception e) {
+                throw new RuntimeException("Could not store image file", e);
+            }
+        }
     }
     
     private void saveRecipeIngredients(Recipe recipe, List<RecipeIngredientRequest> ingredientRequests) {
@@ -288,7 +335,9 @@ public class RecipeService {
         dto.setCookTime(recipe.getCookTime());
         dto.setTotalTime(recipe.getTotalTime());
         dto.setServings(recipe.getServings());
-        dto.setCalories(recipe.getCalories());
+        
+        // Set image URL
+        dto.setImageUrl(recipe.getImageUrl());
         dto.setProtein(recipe.getProtein());
         dto.setCarbs(recipe.getCarbs());
         dto.setFat(recipe.getFat());
@@ -330,7 +379,9 @@ public class RecipeService {
         dto.setProtein(recipe.getProtein());
         dto.setCarbs(recipe.getCarbs());
         dto.setFat(recipe.getFat());
-        dto.setFiber(recipe.getFiber());
+        dto.setServings(recipe.getServings());
+        
+        // Set image URL
         dto.setImageUrl(recipe.getImageUrl());
         dto.setVideoUrl(recipe.getVideoUrl());
         dto.setIsVegetarian(recipe.getIsVegetarian());

@@ -34,6 +34,9 @@ public class RecipeRequest {
     private BigDecimal fiber;
     private String imageUrl;
     private String videoUrl;
+    private byte[] imageData;
+    private String imageFilename;
+    private String imageContentType;
     private Boolean isVegetarian = false;
     private Boolean isVegan = false;
     private Boolean isGlutenFree = false;

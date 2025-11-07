@@ -1,3 +1,3 @@
-com/cookmate/backend/CookmateBackendApplicationTests.class
-com/cookmate/backend/controller/AIControllerTest.class
-com/cookmate/backend/service/IngredientSubstitutionServiceTest.class
+com\cookmate\backend\controller\AIControllerTest.class
+com\cookmate\backend\service\IngredientSubstitutionServiceTest.class
+com\cookmate\backend\CookmateBackendApplicationTests.class

@@ -16,6 +16,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -107,6 +108,7 @@ public class MealPlanService {
         return new ApiResponse(true, "Meal plan deleted successfully");
     }
     
+    @Transactional(readOnly = true)
     public MealPlanDto getMealPlanById(Long id, Authentication authentication) {
         MealPlan mealPlan = mealPlanRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("MealPlan", "id", id));
@@ -117,16 +119,27 @@ public class MealPlanService {
             throw new UnauthorizedException("You don't have permission to view this meal plan");
         }
         
+        // Eagerly load mealPlanRecipes to avoid LazyInitializationException
+        mealPlan.getMealPlanRecipes().size();
+        
         return convertToDto(mealPlan);
     }
     
+    @Transactional(readOnly = true)
     public PageResponse<MealPlanDto> getUserMealPlans(Authentication authentication, int page, int size) {
         UserDetailsImpl userDetails = (UserDetailsImpl) authentication.getPrincipal();
         Pageable pageable = PageRequest.of(page, size);
         
         Page<MealPlan> mealPlanPage = mealPlanRepository.findByUser_Id(userDetails.getId(), pageable);
         
-        List<MealPlanDto> content = mealPlanPage.getContent().stream()
+        // Eagerly load mealPlanRecipes to avoid LazyInitializationException
+        List<MealPlan> mealPlans = mealPlanPage.getContent();
+        for (MealPlan mealPlan : mealPlans) {
+            // Initialize the lazy collection within the transaction
+            mealPlan.getMealPlanRecipes().size();
+        }
+        
+        List<MealPlanDto> content = mealPlans.stream()
                 .map(this::convertToDto)
                 .collect(Collectors.toList());
         
@@ -140,12 +153,19 @@ public class MealPlanService {
         );
     }
     
+    @Transactional(readOnly = true)
     public List<MealPlanDto> getActiveMealPlans(Authentication authentication) {
         UserDetailsImpl userDetails = (UserDetailsImpl) authentication.getPrincipal();
         LocalDate today = LocalDate.now();
         
         List<MealPlan> mealPlans = mealPlanRepository
                 .findByUser_IdAndEndDateAfter(userDetails.getId(), today);
+        
+        // Eagerly load mealPlanRecipes to avoid LazyInitializationException
+        for (MealPlan mealPlan : mealPlans) {
+            // Initialize the lazy collection within the transaction
+            mealPlan.getMealPlanRecipes().size();
+        }
         
         return mealPlans.stream()
                 .map(this::convertToDto)
@@ -177,10 +197,17 @@ public class MealPlanService {
         dto.setEndDate(mealPlan.getEndDate());
         dto.setCreatedAt(mealPlan.getCreatedAt());
         
-        List<MealPlanRecipeDto> meals = mealPlan.getMealPlanRecipes().stream()
-                .map(this::convertToMealRecipeDto)
-                .collect(Collectors.toList());
-        dto.setMeals(meals);
+        // Safely handle mealPlanRecipes collection
+        try {
+            List<MealPlanRecipeDto> meals = mealPlan.getMealPlanRecipes().stream()
+                    .map(this::convertToMealRecipeDto)
+                    .collect(Collectors.toList());
+            dto.setMeals(meals);
+        } catch (Exception e) {
+            // If collection is not initialized, set empty list
+            System.err.println("Warning: mealPlanRecipes collection not initialized for meal plan " + mealPlan.getId());
+            dto.setMeals(new ArrayList<>());
+        }
         
         return dto;
     }

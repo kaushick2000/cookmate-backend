@@ -243,15 +243,15 @@ public class AIChatbotService {
     private String getSubstitutionFallback() {
         return "🔄 **Ingredient Substitution Guide**\n\n" +
                "**Common Substitutions:**\n" +
-               "• **Yogurt** → Buttermilk, sour cream, or lemon juice + milk\n" +
-               "• **Ginger-garlic paste** → Fresh minced ginger + garlic\n" +
-               "• **Saffron** → Turmeric (for color), or skip for flavor\n" +
-               "• **Ghee** → Butter, coconut oil, or vegetable oil\n" +
-               "• **Fresh herbs** → Dried herbs (use 1/3 amount)\n\n" +
+               "→ **Yogurt** → Buttermilk, sour cream, or lemon juice + milk\n" +
+               "→ **Ginger-garlic paste** → Fresh minced ginger + garlic\n" +
+               "→ **Saffron** → Turmeric (for color), or skip for flavor\n" +
+               "→ **Ghee** → Butter, coconut oil, or vegetable oil\n" +
+               "→ **Fresh herbs** → Dried herbs (use 1/3 amount)\n\n" +
                "**Spice Substitutions:**\n" +
-               "• **Garam masala** → Cinnamon + cardamom + cloves\n" +
-               "• **Biryani masala** → Garam masala + bay leaves\n" +
-               "• **Fresh chilies** → Chili powder (start with less)\n\n" +
+               "→ **Garam masala** → Cinnamon + cardamom + cloves\n" +
+               "→ **Biryani masala** → Garam masala + bay leaves\n" +
+               "→ **Fresh chilies** → Chili powder (start with less)\n\n" +
                "What specific ingredient would you like to substitute?";
     }
     
@@ -261,17 +261,17 @@ public class AIChatbotService {
     private String getCookingTipsFallback() {
         return "💡 **Essential Cooking Tips**\n\n" +
                "**Rice Cooking:**\n" +
-               "• Wash basmati rice until water runs clear\n" +
-               "• Soak rice for 30 minutes before cooking\n" +
-               "• Use 1:1.5 rice to water ratio\n\n" +
+               "→ Wash basmati rice until water runs clear\n" +
+               "→ Soak rice for 30 minutes before cooking\n" +
+               "→ Use 1:1.5 rice to water ratio\n\n" +
                "**Meat Preparation:**\n" +
-               "• Marinate for at least 30 minutes\n" +
-               "• Cook on medium heat to avoid burning\n" +
-               "• Let meat rest before serving\n\n" +
+               "→ Marinate for at least 30 minutes\n" +
+               "→ Cook on medium heat to avoid burning\n" +
+               "→ Let meat rest before serving\n\n" +
                "**Flavor Enhancement:**\n" +
-               "• Toast whole spices before grinding\n" +
-               "• Add salt gradually and taste frequently\n" +
-               "• Fresh herbs added at the end retain flavor\n\n" +
+               "→ Toast whole spices before grinding\n" +
+               "→ Add salt gradually and taste frequently\n" +
+               "→ Fresh herbs added at the end retain flavor\n\n" +
                "What specific cooking challenge can I help you with?";
     }
     
@@ -1452,15 +1452,16 @@ public class AIChatbotService {
         prompt.append("Answer this cooking question: \"").append(message).append("\"\n\n");
         
         prompt.append("Please:\n")
-              .append("• Use clear headers and bullet points for organization\n")
-              .append("• Include specific measurements and timing\n")
-              .append("• Add nutritional information when relevant (calories, protein, carbs, fats)\n")
-              .append("• Be encouraging and friendly in tone\n")
-              .append("• Provide practical, easy-to-follow instructions\n")
-              .append("• Add helpful tips or variations when relevant\n")
-              .append("• Use emojis to make the response more engaging\n")
-              .append("• For quick recipes, focus on 3-4 ingredients and include prep/cook time\n")
-              .append("• For nutrition questions, include daily value percentages when possible\n\n")
+              .append("→ Use clear headers and organized sections\n")
+              .append("→ Include specific measurements and timing\n")
+              .append("→ Add nutritional information when relevant (calories, protein, carbs, fats)\n")
+              .append("→ Be encouraging and friendly in tone\n")
+              .append("→ Provide practical, easy-to-follow instructions\n")
+              .append("→ Add helpful tips or variations when relevant\n")
+              .append("→ Use emojis to make the response more engaging\n")
+              .append("→ For quick recipes, focus on 3-4 ingredients and include prep/cook time\n")
+              .append("→ For nutrition questions, include daily value percentages when possible\n")
+              .append("→ Format lists with arrows (→) instead of asterisks for better readability\n\n")
               .append("Keep your response informative but conversational!");
         
         return prompt.toString();

@@ -91,6 +91,8 @@ public class SecurityConfig {
                         .requestMatchers("/api/recipes").permitAll()
                         .requestMatchers("/api/recipes/filter").permitAll()
                         .requestMatchers("/api/recipes/{id}").permitAll()
+                        .requestMatchers("/api/recipes/substitutions").permitAll()
+                        .requestMatchers("/api/ai-chat/**").permitAll()
                         .requestMatchers("/uploads/**").permitAll()
                         .requestMatchers("/api/admin/**").hasRole("ADMIN")
                         .requestMatchers("/oauth2/**").permitAll()

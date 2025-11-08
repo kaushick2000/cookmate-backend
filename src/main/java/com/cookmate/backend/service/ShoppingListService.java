@@ -15,6 +15,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
+import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -32,6 +35,9 @@ public class ShoppingListService {
     
     @Autowired
     private UserRepository userRepository;
+    
+    @Autowired
+    private MealPlanRepository mealPlanRepository;
     
     @Transactional
     public ShoppingListDto createShoppingList(ShoppingListRequest request, Authentication authentication) {
@@ -92,6 +98,7 @@ public class ShoppingListService {
         return new ApiResponse(true, "Shopping list deleted successfully");
     }
     
+    @Transactional(readOnly = true)
     public ShoppingListDto getShoppingListById(Long id, Authentication authentication) {
         ShoppingList shoppingList = shoppingListRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("ShoppingList", "id", id));
@@ -102,16 +109,27 @@ public class ShoppingListService {
             throw new UnauthorizedException("You don't have permission to view this shopping list");
         }
         
+        // Eagerly load items to avoid LazyInitializationException
+        shoppingList.getItems().size();
+        
         return convertToDto(shoppingList);
     }
     
+    @Transactional(readOnly = true)
     public PageResponse<ShoppingListDto> getUserShoppingLists(Authentication authentication, int page, int size) {
         UserDetailsImpl userDetails = (UserDetailsImpl) authentication.getPrincipal();
         Pageable pageable = PageRequest.of(page, size);
         
         Page<ShoppingList> listPage = shoppingListRepository.findByUser_Id(userDetails.getId(), pageable);
         
-        List<ShoppingListDto> content = listPage.getContent().stream()
+        // Eagerly load items for all shopping lists to avoid LazyInitializationException
+        List<ShoppingList> shoppingLists = listPage.getContent();
+        for (ShoppingList shoppingList : shoppingLists) {
+            // Initialize the lazy collection within the transaction
+            shoppingList.getItems().size();
+        }
+        
+        List<ShoppingListDto> content = shoppingLists.stream()
                 .map(this::convertToDto)
                 .collect(Collectors.toList());
         
@@ -240,10 +258,17 @@ public class ShoppingListService {
         dto.setName(shoppingList.getName());
         dto.setCreatedAt(shoppingList.getCreatedAt());
         
-        List<ShoppingListItemDto> items = shoppingList.getItems().stream()
-                .map(this::convertToItemDto)
-                .collect(Collectors.toList());
-        dto.setItems(items);
+        // Safely handle items collection
+        try {
+            List<ShoppingListItemDto> items = shoppingList.getItems().stream()
+                    .map(this::convertToItemDto)
+                    .collect(Collectors.toList());
+            dto.setItems(items);
+        } catch (Exception e) {
+            // If collection is not initialized, set empty list
+            System.err.println("Warning: items collection not initialized for shopping list " + shoppingList.getId());
+            dto.setItems(new ArrayList<>());
+        }
         
         return dto;
     }
@@ -258,5 +283,126 @@ public class ShoppingListService {
         dto.setIsPurchased(item.getIsPurchased());
         dto.setCategory(item.getCategory());
         return dto;
+    }
+    
+    @Transactional
+    public ShoppingListDto generateFromMealPlans(Long listId, Authentication authentication) {
+        UserDetailsImpl userDetails = (UserDetailsImpl) authentication.getPrincipal();
+        LocalDate today = LocalDate.now();
+        
+        // Get active meal plans for the user
+        List<MealPlan> activeMealPlans = mealPlanRepository
+                .findByUser_IdAndEndDateAfter(userDetails.getId(), today);
+        
+        if (activeMealPlans.isEmpty()) {
+            throw new ResourceNotFoundException("No active meal plans found");
+        }
+        
+        // Get or create shopping list
+        ShoppingList shoppingList;
+        if (listId != null) {
+            ShoppingList existingList = shoppingListRepository.findById(listId)
+                    .orElseThrow(() -> new ResourceNotFoundException("ShoppingList", "id", listId));
+            
+            if (!existingList.getUser().getId().equals(userDetails.getId())) {
+                throw new UnauthorizedException("You don't have permission to modify this shopping list");
+            }
+            
+            // Clear existing items
+            existingList.getItems().clear();
+            shoppingListItemRepository.deleteByShoppingList_Id(listId);
+            shoppingList = existingList;
+        } else {
+            // Create new shopping list
+            User user = userRepository.findById(userDetails.getId())
+                    .orElseThrow(() -> new ResourceNotFoundException("User", "id", userDetails.getId()));
+            
+            ShoppingList newList = new ShoppingList();
+            newList.setUser(user);
+            newList.setName("Shopping List from Meal Plans");
+            shoppingList = shoppingListRepository.save(newList);
+        }
+        
+        // Collect all recipes from meal plans with their servings
+        Map<Long, Integer> recipeServingsMap = new HashMap<>();
+        for (MealPlan mealPlan : activeMealPlans) {
+            // Eagerly load mealPlanRecipes
+            mealPlan.getMealPlanRecipes().size();
+            
+            for (MealPlanRecipe mealPlanRecipe : mealPlan.getMealPlanRecipes()) {
+                Long recipeId = mealPlanRecipe.getRecipe().getId();
+                Integer servings = mealPlanRecipe.getServings() != null ? mealPlanRecipe.getServings() : 1;
+                
+                // Accumulate servings for the same recipe
+                recipeServingsMap.put(recipeId, 
+                    recipeServingsMap.getOrDefault(recipeId, 0) + servings);
+            }
+        }
+        
+        // Aggregate ingredients from all recipes
+        Map<String, ShoppingListItem> itemMap = new HashMap<>();
+        
+        for (Map.Entry<Long, Integer> entry : recipeServingsMap.entrySet()) {
+            Long recipeId = entry.getKey();
+            Integer totalServings = entry.getValue();
+            
+            Recipe recipe = recipeRepository.findById(recipeId)
+                    .orElseThrow(() -> new ResourceNotFoundException("Recipe", "id", recipeId));
+            
+            // Eagerly load recipe ingredients
+            recipe.getRecipeIngredients().size();
+            
+            Integer recipeServings = recipe.getServings() != null ? recipe.getServings() : 1;
+            BigDecimal servingMultiplier = BigDecimal.valueOf(totalServings)
+                    .divide(BigDecimal.valueOf(recipeServings), 2, RoundingMode.HALF_UP);
+            
+            for (RecipeIngredient recipeIngredient : recipe.getRecipeIngredients()) {
+                String ingredientName = recipeIngredient.getIngredient().getName().toLowerCase();
+                String unit = recipeIngredient.getUnit();
+                
+                // Calculate adjusted quantity based on servings
+                BigDecimal adjustedQuantity = recipeIngredient.getQuantity() != null 
+                    ? recipeIngredient.getQuantity().multiply(servingMultiplier)
+                    : BigDecimal.ZERO;
+                
+                String key = ingredientName + "|" + (unit != null ? unit : "");
+                
+                if (itemMap.containsKey(key)) {
+                    // Combine quantities if same ingredient and unit
+                    ShoppingListItem existingItem = itemMap.get(key);
+                    BigDecimal newQuantity = existingItem.getQuantity()
+                            .add(adjustedQuantity);
+                    existingItem.setQuantity(newQuantity);
+                } else {
+                    ShoppingListItem item = new ShoppingListItem();
+                    item.setShoppingList(shoppingList);
+                    item.setIngredient(recipeIngredient.getIngredient());
+                    item.setIngredientName(recipeIngredient.getIngredient().getName());
+                    item.setQuantity(adjustedQuantity);
+                    item.setUnit(unit);
+                    item.setCategory(recipeIngredient.getIngredient().getCategory());
+                    item.setIsPurchased(false);
+                    
+                    itemMap.put(key, item);
+                }
+            }
+        }
+        
+        // Save all items
+        if (!itemMap.isEmpty()) {
+            shoppingListItemRepository.saveAll(itemMap.values());
+        }
+        
+        // Flush to ensure all items are saved
+        shoppingListItemRepository.flush();
+        
+        // Reload shopping list to get updated items
+        ShoppingList reloadedList = shoppingListRepository.findById(shoppingList.getId())
+                .orElseThrow(() -> new ResourceNotFoundException("ShoppingList", "id", shoppingList.getId()));
+        
+        // Eagerly load items to avoid LazyInitializationException
+        reloadedList.getItems().size();
+        
+        return convertToDto(reloadedList);
     }
 }

@@ -86,4 +86,12 @@ public class ShoppingListController {
         ApiResponse response = shoppingListService.deleteItem(itemId, authentication);
         return ResponseEntity.ok(response);
     }
+    
+    @PostMapping("/generate-from-meal-plans")
+    public ResponseEntity<ShoppingListDto> generateFromMealPlans(
+            @RequestParam(required = false) Long listId,
+            Authentication authentication) {
+        ShoppingListDto shoppingList = shoppingListService.generateFromMealPlans(listId, authentication);
+        return ResponseEntity.ok(shoppingList);
+    }
 }

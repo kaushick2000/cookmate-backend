@@ -81,13 +81,30 @@ public class MealPlanService {
         mealPlan.setStartDate(request.getStartDate());
         mealPlan.setEndDate(request.getEndDate());
         
+        // Update recipes - delete existing ones first
+        // With orphanRemoval = true, clearing the collection will automatically delete orphaned entities
+        mealPlan.getMealPlanRecipes().clear();
+        
+        // Save the meal plan to commit the deletion (orphan removal will delete the old meals)
         MealPlan updatedMealPlan = mealPlanRepository.save(mealPlan);
         
-        // Update recipes
-        if (request.getMeals() != null) {
-            mealPlanRecipeRepository.deleteByMealPlan_Id(id);
+        // Flush to ensure deletion is committed before adding new ones
+        mealPlanRepository.flush();
+        
+        // Add new recipes
+        if (request.getMeals() != null && !request.getMeals().isEmpty()) {
             saveMealPlanRecipes(updatedMealPlan, request.getMeals());
         }
+        
+        // Flush to ensure all new meals are saved
+        mealPlanRepository.flush();
+        
+        // Reload the meal plan to get the updated recipes
+        updatedMealPlan = mealPlanRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("MealPlan", "id", id));
+        
+        // Eagerly load mealPlanRecipes to avoid LazyInitializationException
+        updatedMealPlan.getMealPlanRecipes().size();
         
         return convertToDto(updatedMealPlan);
     }

@@ -42,4 +42,11 @@ public class ShoppingListItem {
     
     @Column(length = 50)
     private String category;
+    
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "source_recipe_id")
+    private Recipe sourceRecipe;
+    
+    @Column(name = "source_recipe_title", length = 255)
+    private String sourceRecipeTitle;
 }

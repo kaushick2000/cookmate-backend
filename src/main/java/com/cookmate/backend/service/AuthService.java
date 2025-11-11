@@ -1,15 +1,11 @@
 package com.cookmate.backend.service;
 
 import com.cookmate.backend.dto.*;
-import com.cookmate.backend.entity.DietaryRestriction;
 import com.cookmate.backend.entity.PasswordResetToken;
 import com.cookmate.backend.entity.User;
-import com.cookmate.backend.entity.UserDietaryRestriction;
 import com.cookmate.backend.entity.UserPreferences;
 import com.cookmate.backend.exception.BadRequestException;
-import com.cookmate.backend.repository.DietaryRestrictionRepository;
 import com.cookmate.backend.repository.PasswordResetTokenRepository;
-import com.cookmate.backend.repository.UserDietaryRestrictionRepository;
 import com.cookmate.backend.repository.UserRepository;
 import com.cookmate.backend.repository.UserPreferencesRepository;
 import com.cookmate.backend.security.jwt.JwtUtils;
@@ -40,12 +36,6 @@ public class AuthService {
     
     @Autowired
     private UserPreferencesRepository userPreferencesRepository;
-    
-    @Autowired
-    private DietaryRestrictionRepository dietaryRestrictionRepository;
-    
-    @Autowired
-    private UserDietaryRestrictionRepository userDietaryRestrictionRepository;
     
     @Autowired
     private PasswordEncoder passwordEncoder;
@@ -335,10 +325,20 @@ public class AuthService {
                 preferences.setFoodAllergies(reqPrefs.getFoodAllergies());
             }
             
-            // Handle dietary restrictions properly
+            // Handle dietary restrictions properly - skip for now to avoid constraint issues
+            // TODO: Fix dietary restrictions handling in a separate update
+            /*
             if (reqPrefs.getDietaryRestrictions() != null) {
-                // First, remove existing dietary restrictions for this user
-                userDietaryRestrictionRepository.deleteByUser(user);
+                // Use deleteByUser method with proper transaction handling
+                try {
+                    userDietaryRestrictionRepository.deleteByUser(user);
+                } catch (Exception e) {
+                    // If bulk delete fails, delete individually
+                    List<UserDietaryRestriction> existingRestrictions = userDietaryRestrictionRepository.findByUser(user);
+                    for (UserDietaryRestriction existing : existingRestrictions) {
+                        userDietaryRestrictionRepository.delete(existing);
+                    }
+                }
                 
                 // Add new dietary restrictions
                 for (String restrictionName : reqPrefs.getDietaryRestrictions()) {
@@ -352,11 +352,19 @@ public class AuthService {
                                 return dietaryRestrictionRepository.save(newRestriction);
                             });
                     
-                    // Create user dietary restriction
-                    UserDietaryRestriction userRestriction = new UserDietaryRestriction(user, restriction);
-                    userDietaryRestrictionRepository.save(userRestriction);
+                    // Check if this combination already exists
+                    List<UserDietaryRestriction> existing = userDietaryRestrictionRepository.findByUser(user);
+                    boolean alreadyExists = existing.stream()
+                            .anyMatch(udr -> udr.getDietaryRestriction().getId().equals(restriction.getId()));
+                    
+                    if (!alreadyExists) {
+                        // Create user dietary restriction
+                        UserDietaryRestriction userRestriction = new UserDietaryRestriction(user, restriction);
+                        userDietaryRestrictionRepository.save(userRestriction);
+                    }
                 }
             }
+            */
             
             if (reqPrefs.getCookingEquipment() != null) {
                 preferences.setCookingEquipment(reqPrefs.getCookingEquipment());

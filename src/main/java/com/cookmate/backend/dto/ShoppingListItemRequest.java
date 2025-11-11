@@ -18,4 +18,6 @@ public class ShoppingListItemRequest {
     private BigDecimal quantity;
     private String unit;
     private String category;
+    private Long sourceRecipeId;
+    private String sourceRecipeTitle;
 }

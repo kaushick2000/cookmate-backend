@@ -18,4 +18,6 @@ public class ShoppingListItemDto {
     private String unit;
     private Boolean isPurchased;
     private String category;
+    private Long sourceRecipeId;
+    private String sourceRecipeTitle;
 }

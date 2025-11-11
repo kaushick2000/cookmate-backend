@@ -10,6 +10,7 @@ import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 
 import java.time.LocalDateTime;
+import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -276,6 +277,44 @@ public class User {
         return dietaryRestrictions.stream()
                 .map(udr -> udr.getDietaryRestriction().getName())
                 .collect(Collectors.toList());
+    }
+    
+    // Custom JSON properties for preferences to properly expose them to frontend
+    @JsonProperty("mealTypes")
+    public List<String> getMealTypes() {
+        if (preferences == null || preferences.getMealTypes() == null) {
+            return List.of();
+        }
+        return Arrays.stream(preferences.getMealTypes().split(","))
+                .map(String::trim)
+                .filter(s -> !s.isEmpty())
+                .collect(Collectors.toList());
+    }
+    
+    @JsonProperty("cuisinePreferences")
+    public List<String> getCuisinePreferences() {
+        if (preferences == null || preferences.getCuisinePreferences() == null) {
+            return List.of();
+        }
+        return Arrays.stream(preferences.getCuisinePreferences().split(","))
+                .map(String::trim)
+                .filter(s -> !s.isEmpty())
+                .collect(Collectors.toList());
+    }
+    
+    @JsonProperty("difficultyLevel") 
+    public String getDifficultyLevel() {
+        if (preferences == null || preferences.getCookingSkillLevel() == null) {
+            return "medium";
+        }
+        // Map cooking skill level to difficulty level
+        switch (preferences.getCookingSkillLevel()) {
+            case BEGINNER: return "easy";
+            case INTERMEDIATE: return "medium";
+            case ADVANCED: 
+            case EXPERT: return "hard";
+            default: return "medium";
+        }
     }
     
     public enum Role {

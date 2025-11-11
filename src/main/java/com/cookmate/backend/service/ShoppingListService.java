@@ -162,6 +162,22 @@ public class ShoppingListService {
         item.setCategory(request.getCategory());
         item.setIsPurchased(false);
         
+        // Set recipe information if provided
+        if (request.getSourceRecipeId() != null) {
+            try {
+                Recipe recipe = recipeRepository.findById(request.getSourceRecipeId()).orElse(null);
+                if (recipe != null) {
+                    item.setSourceRecipe(recipe);
+                    item.setSourceRecipeTitle(recipe.getTitle());
+                }
+            } catch (Exception e) {
+                // If recipe loading fails, still set the provided title
+                item.setSourceRecipeTitle(request.getSourceRecipeTitle());
+            }
+        } else if (request.getSourceRecipeTitle() != null) {
+            item.setSourceRecipeTitle(request.getSourceRecipeTitle());
+        }
+        
         shoppingListItemRepository.save(item);
         
         return convertToDto(shoppingList);
@@ -228,6 +244,8 @@ public class ShoppingListService {
                     item.setUnit(recipeIngredient.getUnit());
                     item.setCategory(recipeIngredient.getIngredient().getCategory());
                     item.setIsPurchased(false);
+                    item.setSourceRecipe(recipe);
+                    item.setSourceRecipeTitle(recipe.getTitle());
                     
                     itemMap.put(ingredientName, item);
                 }
@@ -246,6 +264,23 @@ public class ShoppingListService {
             item.setUnit(itemRequest.getUnit());
             item.setCategory(itemRequest.getCategory());
             item.setIsPurchased(false);
+            
+            // Set recipe information if provided
+            if (itemRequest.getSourceRecipeId() != null) {
+                // Optional: Load the recipe to set both ID and title
+                try {
+                    Recipe recipe = recipeRepository.findById(itemRequest.getSourceRecipeId()).orElse(null);
+                    if (recipe != null) {
+                        item.setSourceRecipe(recipe);
+                        item.setSourceRecipeTitle(recipe.getTitle());
+                    }
+                } catch (Exception e) {
+                    // If recipe loading fails, still set the provided title
+                    item.setSourceRecipeTitle(itemRequest.getSourceRecipeTitle());
+                }
+            } else if (itemRequest.getSourceRecipeTitle() != null) {
+                item.setSourceRecipeTitle(itemRequest.getSourceRecipeTitle());
+            }
             
             shoppingListItemRepository.save(item);
         }
@@ -282,6 +317,8 @@ public class ShoppingListService {
         dto.setUnit(item.getUnit());
         dto.setIsPurchased(item.getIsPurchased());
         dto.setCategory(item.getCategory());
+        dto.setSourceRecipeId(item.getSourceRecipe() != null ? item.getSourceRecipe().getId() : null);
+        dto.setSourceRecipeTitle(item.getSourceRecipeTitle());
         return dto;
     }
     
@@ -290,9 +327,9 @@ public class ShoppingListService {
         UserDetailsImpl userDetails = (UserDetailsImpl) authentication.getPrincipal();
         LocalDate today = LocalDate.now();
         
-        // Get active meal plans for the user
+        // Get active meal plans for the user (where today is between start and end dates)
         List<MealPlan> activeMealPlans = mealPlanRepository
-                .findByUser_IdAndEndDateAfter(userDetails.getId(), today);
+                .findActiveMealPlans(userDetails.getId(), today);
         
         if (activeMealPlans.isEmpty()) {
             throw new ResourceNotFoundException("No active meal plans found");

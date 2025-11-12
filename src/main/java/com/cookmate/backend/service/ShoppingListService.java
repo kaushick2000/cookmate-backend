@@ -376,8 +376,9 @@ public class ShoppingListService {
             }
         }
         
-        // Aggregate ingredients from all recipes
+        // Aggregate ingredients from all recipes - now keeping track of recipes for each ingredient
         Map<String, ShoppingListItem> itemMap = new HashMap<>();
+        Map<String, List<String>> ingredientToRecipes = new HashMap<>();
         
         for (Map.Entry<Long, Integer> entry : recipeServingsMap.entrySet()) {
             Long recipeId = entry.getKey();
@@ -404,6 +405,9 @@ public class ShoppingListService {
                 
                 String key = ingredientName + "|" + (unit != null ? unit : "");
                 
+                // Track which recipes this ingredient comes from
+                ingredientToRecipes.computeIfAbsent(key, k -> new ArrayList<>()).add(recipe.getTitle());
+                
                 if (itemMap.containsKey(key)) {
                     // Combine quantities if same ingredient and unit
                     ShoppingListItem existingItem = itemMap.get(key);
@@ -419,6 +423,9 @@ public class ShoppingListService {
                     item.setUnit(unit);
                     item.setCategory(recipeIngredient.getIngredient().getCategory());
                     item.setIsPurchased(false);
+                    // Set sourceRecipe and sourceRecipeTitle for the first recipe
+                    item.setSourceRecipe(recipe);
+                    item.setSourceRecipeTitle(recipe.getTitle());
                     
                     itemMap.put(key, item);
                 }

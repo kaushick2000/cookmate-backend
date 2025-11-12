@@ -1,3 +1,9 @@
-com/cookmate/backend/CookmateBackendApplicationTests.class
-com/cookmate/backend/controller/AIControllerTest.class
-com/cookmate/backend/service/IngredientSubstitutionServiceTest.class
+com\cookmate\backend\controller\AIControllerTest.class
+com\cookmate\backend\service\IngredientSubstitutionServiceTest.class
+com\cookmate\backend\service\ReviewServiceTest.class
+com\cookmate\backend\CookmateBackendApplicationTests.class
+com\cookmate\backend\service\MealPlanServiceTest.class
+com\cookmate\backend\service\RecipeServiceTest.class
+com\cookmate\backend\service\AuthenticationServiceTest.class
+com\cookmate\backend\service\ShoppingListServiceUT09Test.class
+com\cookmate\backend\service\FavoriteServiceTest.class

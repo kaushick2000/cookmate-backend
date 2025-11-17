@@ -289,4 +289,28 @@ public class RecipeController {
         return ResponseEntity.ok(substitutions);
     }
 
+    /**
+     * Batch ingredient substitutions for a list of ingredient names
+     */
+    @PostMapping("/substitutions/batch")
+    public ResponseEntity<Map<String, IngredientSubstitutionDto>> getBatchIngredientSubstitutions(
+            @RequestBody Map<String, Object> body) {
+        Object rawList = body.get("ingredients");
+        boolean useAI = false;
+        if (body.containsKey("useAI")) {
+            Object rawUseAI = body.get("useAI");
+            useAI = rawUseAI != null && Boolean.parseBoolean(rawUseAI.toString());
+        }
+
+        java.util.List<String> ingredients = new java.util.ArrayList<>();
+        if (rawList instanceof java.util.List<?> list) {
+            for (Object o : list) {
+                if (o != null) ingredients.add(o.toString());
+            }
+        }
+
+        Map<String, IngredientSubstitutionDto> resp = substitutionService.suggestAll(ingredients, useAI);
+        return ResponseEntity.ok(resp);
+    }
+
 }

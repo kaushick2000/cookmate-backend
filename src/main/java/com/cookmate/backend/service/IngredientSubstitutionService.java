@@ -233,4 +233,18 @@ public class IngredientSubstitutionService {
              .trim();
         return t;
     }
+
+    /**
+     * Suggest substitutions for a list of ingredients. Useful for batch UI rendering
+     * where each ingredient in a recipe should have suggestions available.
+     */
+    public Map<String, IngredientSubstitutionDto> suggestAll(List<String> ingredients, boolean useAI) {
+        Map<String, IngredientSubstitutionDto> result = new LinkedHashMap<>();
+        if (ingredients == null) return result;
+        for (String ing : ingredients) {
+            IngredientSubstitutionDto dto = suggest(ing, useAI);
+            result.put(ing, dto);
+        }
+        return result;
+    }
 }

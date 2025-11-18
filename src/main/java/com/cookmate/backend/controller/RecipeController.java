@@ -313,4 +313,98 @@ public class RecipeController {
         return ResponseEntity.ok(resp);
     }
 
+    /**
+     * Scale ingredients based on target servings
+     */
+    @PostMapping("/scale-ingredients")
+    public ResponseEntity<java.util.List<Map<String, Object>>> scaleIngredients(
+            @RequestBody Map<String, Object> body) {
+        
+        Object rawIngredients = body.get("ingredients");
+        Object rawOriginal = body.get("originalServings");
+        Object rawTarget = body.get("targetServings");
+        
+        if (rawIngredients == null || rawOriginal == null || rawTarget == null) {
+            return ResponseEntity.badRequest().build();
+        }
+        
+        double originalServings = Double.parseDouble(rawOriginal.toString());
+        double targetServings = Double.parseDouble(rawTarget.toString());
+        
+        if (originalServings <= 0 || targetServings <= 0) {
+            return ResponseEntity.badRequest().build();
+        }
+        
+        double multiplier = targetServings / originalServings;
+        
+        java.util.List<Map<String, Object>> scaled = new java.util.ArrayList<>();
+        
+        if (rawIngredients instanceof java.util.List<?> list) {
+            for (Object item : list) {
+                if (item instanceof java.util.Map<?, ?> ingMap) {
+                    Map<String, Object> scaledIng = new java.util.HashMap<>();
+                    
+                    String name = ingMap.get("ingredientName") != null ? ingMap.get("ingredientName").toString() : "";
+                    scaledIng.put("ingredientName", name);
+                    
+                    String unit = ingMap.get("unit") != null ? ingMap.get("unit").toString() : null;
+                    scaledIng.put("unit", unit);
+                    
+                    // Parse and scale quantity
+                    Object qtyObj = ingMap.get("quantity");
+                    if (qtyObj != null && !qtyObj.toString().trim().isEmpty()) {
+                        try {
+                            String qtyStr = qtyObj.toString().trim();
+                            
+                            // Handle fractions (e.g., "1/2", "2 1/4")
+                            double qty = parseFraction(qtyStr);
+                            double scaledQty = qty * multiplier;
+                            
+                            // Format to 2 decimal places, remove trailing zeros
+                            String formatted = String.format("%.2f", scaledQty).replaceAll("0*$", "").replaceAll("\\.$", "");
+                            scaledIng.put("quantity", formatted);
+                        } catch (Exception e) {
+                            // If parsing fails, keep original
+                            scaledIng.put("quantity", qtyObj.toString());
+                        }
+                    } else {
+                        scaledIng.put("quantity", null);
+                    }
+                    
+                    scaled.add(scaledIng);
+                }
+            }
+        }
+        
+        return ResponseEntity.ok(scaled);
+    }
+    
+    /**
+     * Parse fraction strings like "1/2", "2 1/4", "1.5" into double
+     */
+    private double parseFraction(String str) {
+        str = str.trim();
+        
+        // Handle mixed fractions like "2 1/4"
+        if (str.contains(" ")) {
+            String[] parts = str.split("\\s+", 2);
+            double whole = Double.parseDouble(parts[0]);
+            double fraction = parseFraction(parts[1]);
+            return whole + fraction;
+        }
+        
+        // Handle fractions like "1/2"
+        if (str.contains("/")) {
+            String[] parts = str.split("/");
+            if (parts.length == 2) {
+                double numerator = Double.parseDouble(parts[0]);
+                double denominator = Double.parseDouble(parts[1]);
+                return numerator / denominator;
+            }
+        }
+        
+        // Handle decimal or integer
+        return Double.parseDouble(str);
+    }
+
 }

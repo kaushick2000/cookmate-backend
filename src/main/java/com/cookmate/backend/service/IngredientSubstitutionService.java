@@ -170,6 +170,11 @@ public class IngredientSubstitutionService {
             }
         }
 
+        // Fallback: if still empty, generate simple heuristic substitutions
+        if (subs.isEmpty()) {
+            subs = generateFallbacks(key);
+        }
+
         String source;
         if (subs.isEmpty()) {
             source = "none";
@@ -246,5 +251,48 @@ public class IngredientSubstitutionService {
             result.put(ing, dto);
         }
         return result;
+    }
+
+    /**
+     * Heuristic fallback substitutions when neither rule-based nor AI provides data.
+     */
+    private List<IngredientSubstitutionDto.Substitution> generateFallbacks(String key) {
+        List<IngredientSubstitutionDto.Substitution> list = new ArrayList<>();
+        // Simple category-based suggestions
+        if (key.contains("salt")) {
+            list.add(new IngredientSubstitutionDto.Substitution("Sea Salt", "1:1", "Cleaner mineral taste"));
+            list.add(new IngredientSubstitutionDto.Substitution("Kosher Salt", "1:1", "Larger crystals, adjust by taste"));
+        } else if (key.contains("sugar")) {
+            list.add(new IngredientSubstitutionDto.Substitution("Honey", "3/4", "Reduce other liquids slightly"));
+            list.add(new IngredientSubstitutionDto.Substitution("Maple Syrup", "3/4", "Adds its own flavor"));
+        } else if (key.contains("oil")) {
+            list.add(new IngredientSubstitutionDto.Substitution("Olive Oil", "1:1", "Good for sautéing"));
+            list.add(new IngredientSubstitutionDto.Substitution("Avocado Oil", "1:1", "High smoke point"));
+        } else if (key.contains("flour")) {
+            list.add(new IngredientSubstitutionDto.Substitution("Whole Wheat Flour", "1:1", "Denser texture"));
+            list.add(new IngredientSubstitutionDto.Substitution("Oat Flour", "1:1", "Mild flavor"));
+        } else if (key.contains("milk")) {
+            list.add(new IngredientSubstitutionDto.Substitution("Almond Milk", "1:1", "Neutral dairy-free option"));
+            list.add(new IngredientSubstitutionDto.Substitution("Oat Milk", "1:1", "Creamier texture"));
+        } else if (key.contains("egg")) {
+            list.add(new IngredientSubstitutionDto.Substitution("Flax Egg", "1 tbsp flax + 3 tbsp water", "Let gel 5 minutes"));
+            list.add(new IngredientSubstitutionDto.Substitution("Applesauce", "1/4 cup", "Moisture & binding in baking"));
+        } else if (key.contains("butter")) {
+            list.add(new IngredientSubstitutionDto.Substitution("Olive Oil", "3/4", "Use in cooking, adjust liquids"));
+            list.add(new IngredientSubstitutionDto.Substitution("Coconut Oil", "1:1", "Solid at room temp"));
+        } else if (key.contains("chicken")) {
+            list.add(new IngredientSubstitutionDto.Substitution("Turkey", "1:1", "Leaner protein"));
+            list.add(new IngredientSubstitutionDto.Substitution("Tofu", "1:1 by weight", "Marinate for flavor"));
+        } else if (key.contains("beef")) {
+            list.add(new IngredientSubstitutionDto.Substitution("Ground Turkey", "1:1", "Lower fat"));
+            list.add(new IngredientSubstitutionDto.Substitution("Lentils", "1 cup cooked = 1 lb", "Plant-based option"));
+        } else if (key.contains("rice")) {
+            list.add(new IngredientSubstitutionDto.Substitution("Quinoa", "1:1", "Higher protein"));
+            list.add(new IngredientSubstitutionDto.Substitution("Cauliflower Rice", "1:1", "Low-carb alternative"));
+        } else if (key.contains("cream")) {
+            list.add(new IngredientSubstitutionDto.Substitution("Coconut Cream", "1:1", "Dairy-free richness"));
+            list.add(new IngredientSubstitutionDto.Substitution("Cashew Cream", "1:1", "Blend soaked cashews"));
+        }
+        return list;
     }
 }
